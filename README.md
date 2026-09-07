@@ -45,3 +45,18 @@ Copy server/.env.example to server/.env.
 Replace placeholder values with your own configuration.
 
 Actual .env files are excluded from version control.
+
+## City configuration
+
+The supplied cities.json contains eight cities inside a List array.
+The assignment requires at least ten cities.
+
+I preserved the supplied file and added London and Cairns in
+server/src/data/additional-cities.json.
+
+The backend reads both files, validates CityCode values, converts
+them to numbers, removes duplicates, and requires at least ten
+unique city codes.
+
+The Temp and Status fields in the supplied file are not used as
+live weather data. Current weather will be retrieved from OpenWeatherMap.
