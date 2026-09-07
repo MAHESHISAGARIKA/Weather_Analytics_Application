@@ -60,3 +60,28 @@ unique city codes.
 
 The Temp and Status fields in the supplied file are not used as
 live weather data. Current weather will be retrieved from OpenWeatherMap.
+
+## Weather retrieval
+
+The backend retrieves current weather from OpenWeatherMap using
+the configured CityCode values and metric units.
+
+Each request has an eight-second timeout. Responses are checked
+for HTTP errors, valid JSON, matching city ID, city name,
+description, temperature, humidity, wind speed, and timestamp.
+
+Requests are processed using Promise.allSettled so one failed
+city does not discard successful results.
+
+The OpenWeather API key is loaded from server/.env.
+Request URLs and API keys are not logged.
+
+### Manual integration checks
+
+From the server directory:
+
+- node scripts/check-weather.js one
+- node scripts/check-weather.js all
+
+The all-city checkpoint requires at least ten valid weather results.
+These commands use the live API and consume API requests.
