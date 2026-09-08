@@ -139,3 +139,35 @@ From the server folder:
 
 node scripts/check-rankings.js sample
 node scripts/check-rankings.js live
+
+## Automated tests
+
+From the project root:
+
+```powershell
+cd server
+npm ci
+npm test
+```
+
+To rerun tests automatically while developing:
+
+```powershell
+npm run test:watch
+```
+
+The backend tests cover:
+
+- Preferred conditions and the documented Comfort Index example.
+- Extreme conditions, score boundaries, and invalid inputs.
+- Descending rankings and deterministic tie-breaking.
+- Preservation of the original weather records.
+- Weather response validation.
+- HTTP errors, network failures, and malformed JSON.
+- Partial success when one city's weather response is invalid.
+
+Weather request tests replace fetch with mock responses. They do not
+require an OpenWeather API key or make external network requests.
+
+Live API connectivity and the minimum of 10 valid cities are checked
+separately.
