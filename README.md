@@ -171,3 +171,32 @@ require an OpenWeather API key or make external network requests.
 
 Live API connectivity and the minimum of 10 valid cities are checked
 separately.
+
+## Backend caching
+
+Successful OpenWeather responses are cached by city ID for 300 seconds
+after retrieval and validation.
+
+Processed rankings are cached using the city configuration and Comfort
+Index settings, including the formula version. Their expiry is the
+earliest expiry among their raw weather inputs.
+
+Simultaneous requests for the same uncached key share one in-progress
+operation.
+
+Failed provider requests are not cached. Partial rankings are returned
+without being cached, allowing failed cities to be retried while
+successful raw responses remain reusable.
+
+The Refresh button uses the normal weather endpoint and respects
+backend caching.
+
+Cache diagnostics expose HIT/MISS/COALESCED status, counters, and
+remaining lifetimes. The diagnostics router requires authentication.
+
+The cache is held in backend process memory. Restarting the process
+clears it. Multiple backend instances would have separate caches;
+a shared cache such as Redis would be needed for coordinated caching.
+
+Automated tests use a fake clock to verify expiry, request sharing,
+failure recovery, and ranking expiry.
