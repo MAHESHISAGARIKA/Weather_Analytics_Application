@@ -85,3 +85,57 @@ From the server directory:
 
 The all-city checkpoint requires at least ten valid weather results.
 These commands use the live API and consume API requests.
+
+## Comfort Index
+
+The backend calculates a Comfort Index from temperature,
+humidity, and wind speed.
+
+### Formula
+
+T = clamp(100 - abs(temperature - 22) * 6)
+H = clamp(100 - abs(humidity - 50) * 2)
+W = clamp(100 - abs(windSpeed - 2) * 20)
+
+Comfort Index = 0.50T + 0.30H + 0.20W
+
+Each component is clamped between 0 and 100.
+The final score is rounded to one decimal place.
+
+### Design assumptions
+
+- Temperature receives 50% because it strongly affects comfort.
+- Humidity receives 30% because very dry or humid conditions
+  can reduce comfort.
+- Wind receives 20% to represent the effect of air movement.
+
+The preferred values are 22°C, 50% humidity, and 2 m/s wind.
+
+The penalty values control sensitivity: each degree away from
+22°C reduces the temperature component by 6 points; each
+percentage point away from 50% reduces the humidity component
+by 2 points; each m/s away from 2 reduces the wind component
+by 20 points.
+
+### Ranking policy
+
+Cities are ranked by descending one-decimal Comfort Index.
+Equal scores are ordered by city name, then city ID.
+Ranks are sequential positions beginning at 1.
+
+### Limitations
+
+This is a subjective comparison heuristic, not a scientifically
+validated comfort or safety index.
+
+It assumes independent contributions from the three parameters
+and does not model interactions between heat, humidity, and wind.
+Rain, sunlight, clothing, activity, and individual preferences
+are not represented.
+
+### Manual checks
+
+From the server folder:
+
+node scripts/check-rankings.js sample
+node scripts/check-rankings.js live
