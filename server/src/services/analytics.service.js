@@ -13,14 +13,11 @@ export function createAnalyticsService({
 
   async function getRawWeather(cityCode) {
     return rawCache.get(String(cityCode), async () => {
-      // Existing service checks HTTP status and validates the response.
       const result = await fetchWeather(cityCode);
-
-      const retrievedAt = Date.now();
 
       return {
         value: result,
-        expiresAt: retrievedAt + WEATHER_TTL_MS,
+        expiresAt: Date.now() + WEATHER_TTL_MS,
       };
     });
   }
@@ -33,13 +30,13 @@ export function createAnalyticsService({
         (code) => !Number.isSafeInteger(code) || code <= 0,
       )
     ) {
-      throw new Error("Provide a non-empty array of valid city codes.");
+      throw new Error(
+        "Provide a non-empty array of valid city codes.",
+      );
     }
 
-    // Equivalent city configurations produce the same cache key.
     const codes = [...new Set(cityCodes)].sort((a, b) => a - b);
 
-    // Include all formula settings as well as its version.
     const key = JSON.stringify({
       formula: COMFORT_CONFIG,
       cityCodes: codes,
@@ -80,15 +77,12 @@ export function createAnalyticsService({
 
       const oldestExpiry =
         successful.length > 0
-          ? Math.min(...successful.map((entry) => entry.expiresAt))
+          ? Math.min(
+              ...successful.map((entry) => entry.expiresAt),
+            )
           : 0;
 
-      /*
-       * Cache only complete rankings.
-       *
-       * Partial results are still returned. Successful raw responses
-       * remain cached, but failed cities can be retried immediately.
-       */
+      // Partial results are returned but not cached as rankings.
       const expiresAt =
         status === "complete" ? oldestExpiry : 0;
 
@@ -98,6 +92,7 @@ export function createAnalyticsService({
           failures,
           meta: {
             status,
+            calculatedAt: new Date().toISOString(),
             requestedCities: codes.length,
             successfulCities: successful.length,
             failedCities: failures.length,
@@ -123,7 +118,9 @@ export function createAnalyticsService({
               : null,
           remainingSeconds: Math.max(
             0,
-            Math.ceil((cached.expiresAt - Date.now()) / 1000),
+            Math.ceil(
+              (cached.expiresAt - Date.now()) / 1000,
+            ),
           ),
         },
       },
@@ -145,6 +142,4 @@ export function createAnalyticsService({
   };
 }
 
-// One shared instance for this backend process.
-// Do not create a new instance inside each HTTP request.
 export const analyticsService = createAnalyticsService();
