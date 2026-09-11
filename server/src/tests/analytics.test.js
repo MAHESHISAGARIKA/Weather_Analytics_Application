@@ -57,11 +57,13 @@ describe("cached analytics", () => {
 
     // Input ordering does not change the ranking cache key.
     const repeat = await service.getRankings([2, 1]);
+
     expect(repeat.meta.cache.status).toBe("HIT");
 
     vi.setSystemTime(Date.now() + 180_000);
 
-    // At 00:05, rankings and city 1 expire. City 2 remains cached.
+    // At 00:05, rankings and city 1 expire.
+    // City 2 remains cached.
     const refreshed = await service.getRankings([1, 2]);
 
     expect(refreshed.meta.cache.status).toBe("MISS");
@@ -104,5 +106,40 @@ describe("cached analytics", () => {
 
     expect(repeat.meta.cache.status).toBe("HIT");
     expect(fetchWeather).toHaveBeenCalledTimes(3);
+  });
+
+  it("refreshes raw weather that expires while another city loads", async () => {
+    const fetchWeather = vi.fn(async (code) => {
+      if (code === 2) {
+        // Simulate two seconds spent loading city 2.
+        vi.setSystemTime(Date.now() + 2_000);
+      }
+
+      return makeResult(code);
+    });
+
+    const service = createAnalyticsService({ fetchWeather });
+
+    // City 1 is retrieved at 00:00 and expires at 00:05.
+    await service.getRankings([1]);
+
+    // Start a combined request one second before expiry.
+    vi.setSystemTime(Date.now() + 299_000);
+
+    const result = await service.getRankings([1, 2]);
+
+    // City 1 expires while city 2 loads and must be fetched again.
+    expect(fetchWeather.mock.calls.map(([code]) => code)).toEqual(
+      [1, 2, 1],
+    );
+
+    expect(result.meta.status).toBe("complete");
+    expect(result.data).toHaveLength(2);
+    expect(result.failures).toEqual([]);
+    expect(result.meta.cache.remainingSeconds).toBe(300);
+
+    expect(
+      Date.parse(result.meta.cache.expiresAt),
+    ).toBeGreaterThan(Date.now());
   });
 });

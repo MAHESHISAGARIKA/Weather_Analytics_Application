@@ -9,14 +9,14 @@ export function createWeatherRouter({ requireAuth }) {
 
   const router = Router();
 
-  // Authentication applies to both endpoints.
-  router.use(requireAuth);
-
   // Browser caching is separate from our backend cache.
   router.use((_req, res, next) => {
     res.set("Cache-Control", "no-store");
     next();
   });
+
+  // Authentication applies to both endpoints.
+  router.use(requireAuth);
 
   router.get("/weather", async (_req, res, next) => {
     try {

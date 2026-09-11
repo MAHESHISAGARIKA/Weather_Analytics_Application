@@ -47,21 +47,49 @@ export function createAnalyticsService({
         codes.map((code) => getRawWeather(code)),
       );
 
+      // Cached weather may expire while another city is loading.
+      // Refresh those expired inputs once.
+      const expiredIndexes = results.flatMap((result, index) =>
+        result.status === "fulfilled" &&
+        result.value.expiresAt <= Date.now()
+          ? [index]
+          : [],
+      );
+
+      const refreshed = await Promise.allSettled(
+        expiredIndexes.map((index) =>
+          getRawWeather(codes[index]),
+        ),
+      );
+
+      expiredIndexes.forEach((index, position) => {
+        results[index] = refreshed[position];
+      });
+
+      const completedAt = Date.now();
       const successful = [];
       const failures = [];
 
       results.forEach((result, index) => {
-        if (result.status === "fulfilled") {
+        if (
+          result.status === "fulfilled" &&
+          result.value.expiresAt > completedAt
+        ) {
           successful.push(result.value);
-        } else {
-          failures.push({
-            cityCode: codes[index],
-            message:
-              result.reason instanceof Error
+          return;
+        }
+
+        // Exclude any input that expired during the refresh round.
+        // Do not retry indefinitely.
+        failures.push({
+          cityCode: codes[index],
+          message:
+            result.status === "fulfilled"
+              ? "Weather expired during retrieval. Refresh to try again."
+              : result.reason instanceof Error
                 ? result.reason.message
                 : "Weather retrieval failed.",
-          });
-        }
+        });
       });
 
       const status =
@@ -82,7 +110,8 @@ export function createAnalyticsService({
             )
           : 0;
 
-      // Partial results are returned but not cached as rankings.
+      // Complete rankings cannot outlive their oldest raw input.
+      // Partial and failed results are returned without being cached.
       const expiresAt =
         status === "complete" ? oldestExpiry : 0;
 
